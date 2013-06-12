@@ -29,6 +29,8 @@
 #  include <vmmlib/vmmlib.hpp>
 #pragma warning(pop)
 
+#include <co/co.h>
+
 namespace eq
 {
 namespace fabric

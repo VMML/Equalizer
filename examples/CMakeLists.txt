@@ -21,6 +21,8 @@ else() # installed examples
 
   include(configure)
   include(CMakeParseArguments)
+  include(ParseArguments)
+  include(PurpleExpandLibraries)
   set(EQ_AGL_USED @EQ_AGL_USED@)
   set(EQ_GLX_USED @EQ_GLX_USED@)
 
@@ -97,7 +99,9 @@ install(DIRECTORY include DESTINATION share/Equalizer/examples
 install(FILES ${CMAKE_SOURCE_DIR}/CMake/EqStringifyShaders.cmake
               ${CMAKE_SOURCE_DIR}/CMake/FindGLEW_MX.cmake
               ${CMAKE_SOURCE_DIR}/CMake/FindPackages.cmake
+              ${CMAKE_SOURCE_DIR}/CMake/PurpleExpandLibraries.cmake
               ${CMAKE_SOURCE_DIR}/CMake/configure.cmake
+              ${CMAKE_SOURCE_DIR}/CMake/ParseArguments.cmake
               DESTINATION share/Equalizer/examples/CMake COMPONENT examples)
 
 if(CUDA_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/eqNBody")
@@ -113,3 +117,4 @@ add_subdirectory(eqHello)
 add_subdirectory(eqPixelBench)
 add_subdirectory(eqPly)
 add_subdirectory(seqPly)
+add_subdirectory(eqMassVolVis)
