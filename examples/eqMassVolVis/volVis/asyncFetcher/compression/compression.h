@@ -12,9 +12,9 @@ namespace eq { namespace util { class PixelBufferObject; }}
 namespace massVolVis
 {
 
+struct GPULoadRequest;
 class DecompressorBase;
 class DataHDDIO;
-class GPULoadRequest;
 class RAMDataElement;
 class VolumeTreeBase;
 

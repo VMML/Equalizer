@@ -19,6 +19,10 @@
 
 #include <math.h>
 
+#ifdef __APPLE__
+    #include <sys/types.h>
+#endif
+
 using namespace massVolVis;
 
 #if 1

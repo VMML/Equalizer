@@ -31,6 +31,8 @@
 
 #include "aglWindowShared.h"
 
+#include <eq/client/global.h>
+
 #ifdef AGL
 
 namespace massVolVis

@@ -7,7 +7,9 @@
 #include <assert.h>
 #include <cstdlib>
 
-#include <omp.h>
+#ifdef _OPENMP
+    #include <omp.h>
+#endif
 
 #include <math.h> // exp2f
 

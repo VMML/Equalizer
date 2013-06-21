@@ -60,8 +60,13 @@ if (LUNCHBOX_FOUND)
 	
       set(visGUI_FORMS
 	ivs/gui/TransferFunctionEditor.ui)
-      
-      QT4_WRAP_CPP(visGUI_SOURCES_MOC ${visGUI_HEADERS_MOC})
+
+	#The following option is due to a bug in MOC of qt 4 used in projects with boost >= 1.48
+	#See: https://bugreports.qt-project.org/browse/QTBUG-22829      
+      QT4_WRAP_CPP(visGUI_SOURCES_MOC ${visGUI_HEADERS_MOC} 
+		OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED
+		-DBOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION )
+
       QT4_WRAP_UI(visGUI_SOURCES_UI ${visGUI_FORMS})
       QT4_ADD_RESOURCES(visGUI_SOURCES_RRC ${visGUI_RESOURCES})
       

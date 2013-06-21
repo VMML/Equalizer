@@ -21,6 +21,10 @@
 
 #include <cstring> // memset
 
+#ifdef __APPLE__
+    #include <sys/types.h>
+#endif
+
 using namespace massVolVis;
 
 

@@ -18,8 +18,8 @@
 namespace massVolVis
 {
 
+struct TransferFunction;
 class Config;
-class TransferFunction;
 class TensorParameters;
 
 class GUINode : public co::LocalNode, private NonCopyable

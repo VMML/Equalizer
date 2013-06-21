@@ -9,6 +9,14 @@ include(PurpleExpandLibraries)
 
 set(MSV_LIB "${PROJECT_BINARY_DIR}/lib/libmsv.so")
 
+#Choose different lib extension for mac os
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	set(MSV_LIB "${PROJECT_BINARY_DIR}/lib/libmsv.dylib")
+ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+
+
+STRING(REGEX REPLACE "-Werror" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
+
 macro(MASSVOL_ADD_TOOL NAME)
   parse_arguments(THIS "SOURCES;HEADERS;LINK_LIBRARIES" "" ${ARGN})
   set(THIS_TARGET ${NAME})

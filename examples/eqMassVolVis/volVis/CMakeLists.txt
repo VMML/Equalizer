@@ -10,6 +10,8 @@ endif(MSVC)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+#MacOS 10.8 clang compiler has some issues with unused functions which are definitely used, so we print them as a warning but let not the compiling exit.
+STRING(REGEX REPLACE "-Werror" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
 
 if(CUDA_FOUND)
   include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
@@ -19,6 +21,12 @@ endif()
 include(files.cmake)
 
 set(MSV_LIB "${PROJECT_BINARY_DIR}/lib/libmsv.so")
+
+#Choose different lib extension for mac os
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	set(MSV_LIB "${PROJECT_BINARY_DIR}/lib/libmsv.dylib")
+ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+
 
 source_group(volVis REGULAR_EXPRESSION .*)
 source_group(\\ FILES CMakeLists.txt files.cmake ${VOLVIS_MAIN_SOURCES} )
