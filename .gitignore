@@ -11,6 +11,7 @@
 *.log
 *.auto.eqc
 Result_*.rgb*
+.DS_Store
 ___*
 tt.*
 tt?.*
