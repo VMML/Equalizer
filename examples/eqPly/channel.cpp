@@ -173,12 +173,6 @@ void Channel::frameDraw( const eq::uint128_t& frameID )
 
     if( model )
     {
-        if( state.useOutOfCore() )
-        {
-            ModelLoader& loader =
-                    static_cast<Node*>( getNode() )->getModelLoader( _modelID );
-            state.setDataManager( &loader );
-        }
         drawModel( model );
     }
     else

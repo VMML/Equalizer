@@ -33,7 +33,6 @@
 #define TRIPLY_RENDERSTATE_H
 
 #include "typedefs.h"
-#include "treeDataManager.h"
 #include "lruCache.h"
 #include <triply/api.h>
 #include <map>
@@ -109,11 +108,6 @@ public:
     TRIPLY_API size_t getMaxBufferMemory()
         { return _maxBufferMemory; }
 
-    TRIPLY_API void setDataManager( TreeDataManager* dataManager)
-        { _dataManager = dataManager; }
-    TRIPLY_API TreeDataManager* getDataManager() const
-        { return _dataManager; }
-
 protected:
     TRIPLY_API explicit RenderState( const GLEWContext* glewContext );
     TRIPLY_API virtual ~RenderState() {}
@@ -127,11 +121,10 @@ protected:
     bool                _useFrustumCulling;
     bool                _useBoundingSpheres;
     bool                _outOfCore;
-    TreeDataManager*    _dataManager;
 
 private:
     static const size_t BufferSizeUnit = 65536; // 64 Kib
-    static const size_t BufferSizesCount = 15;
+    static const size_t BufferSizesCount = 20;
 
     size_t _currentBufferMemory;
     size_t _maxBufferMemory;

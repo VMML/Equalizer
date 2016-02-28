@@ -186,8 +186,8 @@ bool ModelTreeRoot::setupTree( MeshData& modelData,
     ModelTreeNode::_children.clear( true );
 
     ModelTreeNode::_children.resize( info.arity );
-    _treeData.hasColors = modelData.colors.size() > 0;
-    _treeData.boundingBox = modelData.getBoundingBox(); // _treeData.calculateBoundingBox();
+    _treeData._hasColors = modelData.colors.size() > 0;
+    _treeData._boundingBox = modelData.getBoundingBox(); // _treeData.calculateBoundingBox();
 
     TreeGenerator* treeGenerator = TreeGenerator::instantiate( info.partition );
     if( treeGenerator == 0 )
@@ -299,7 +299,7 @@ bool ModelTreeRoot::readFromFile( const std::string& filename,
 
 bool ModelTreeRoot::hasColors() const
 {
-    return _treeData.hasColors;
+    return _treeData._hasColors;
 }
 
 BoundingBox ModelTreeRoot::getBoundingBox() const
@@ -352,37 +352,46 @@ void ModelTreeRoot::toStream( std:: ostream& os )
 /*  Read root node from memory and continue with other nodes.  */
 void ModelTreeRoot::fromMemory( char* start )
 {
-    char** addr = &start;
+    char* addr = start;
+    char** addrPtr = &addr;
     size_t version;
-    memRead( reinterpret_cast< char* >( &version ), addr, sizeof( size_t ) );
+    memRead( reinterpret_cast< char* >( &version ), addrPtr, sizeof( size_t ) );
     if( version != FILE_VERSION )
         throw MeshException( "Error reading binary file. Version in file "
                              "does not match the expected version." );
 
     size_t partitionLength;
     char partitionChars[256];
-    memRead( reinterpret_cast< char* >( &partitionLength ), addr, sizeof( size_t ) );
-    memRead( &(partitionChars[0]), addr, partitionLength * sizeof( char ) );
+    memRead( reinterpret_cast< char* >( &partitionLength ), addrPtr, sizeof( size_t ) );
+    memRead( &(partitionChars[0]), addrPtr, partitionLength * sizeof( char ) );
     std::string partition( partitionChars, partitionLength );
     size_t treeArity;
-    memRead( reinterpret_cast< char* >( &treeArity ), addr, sizeof( size_t ) );
+    memRead( reinterpret_cast< char* >( &treeArity ), addrPtr, sizeof( size_t ) );
     if( _partition != partition || ModelTreeNode::getArity() != treeArity)
         throw MeshException( "Error reading binary file. Invalid tree specification." );
 
     size_t totalTreeNodes;
-    memRead( reinterpret_cast< char* >( &totalTreeNodes ), addr, sizeof( size_t ) );
+    memRead( reinterpret_cast< char* >( &totalTreeNodes ), addrPtr, sizeof( size_t ) );
     size_t nodeType;
-    memRead( reinterpret_cast< char* >( &nodeType ), addr, sizeof( size_t ) );
+    memRead( reinterpret_cast< char* >( &nodeType ), addrPtr, sizeof( size_t ) );
     if( nodeType != ROOT_TYPE )
         throw MeshException( "Error reading binary file. Expected the root "
                              "node, but found something else instead." );
 
     if( _inCoreData )
-        _treeData.fromMemory( addr );
+    {
+        _treeData.fromMemory( addrPtr );
+    }
     else
-        _treeData.fromMemorySkipData( addr );
+    {
+        std::string binName = getBinaryName();
+        size_t readBytes = 0;
+        _treeData.fromFileOutOfCore( binName, addr - start, &readBytes );
+        TRIPLYASSERT( readBytes > 0 );
+        addr += readBytes;
+    }
 
-        ModelTreeNode::fromMemory( addr, _treeData );
+    ModelTreeNode::fromMemory( addrPtr, _treeData );
 }
 
 /*  Functions extracted out of readFromFile to enhance readability.  */
@@ -424,7 +433,7 @@ bool ModelTreeRoot::constructFromPly( const std::string& filename,
     return true;
 }
 
-bool ModelTreeRoot::readBinary(std::string filename)
+bool ModelTreeRoot::readBinary( std::string filename )
 {
     bool result = false;
 

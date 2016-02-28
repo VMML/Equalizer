@@ -1,6 +1,6 @@
 
 /* Copyright (c) 2007, Tobias Wolf <twolf@access.unizh.ch>
- *               2015, Enrique G. Paredes <egparedes@ifi.uzh.ch>
+ *               2016, Enrique G. Paredes <egparedes@ifi.uzh.ch>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -35,6 +35,7 @@
 #include "typedefs.h"
 #include <vector>
 #include <fstream>
+#include "mmap.h"
 
 
 namespace triply 
@@ -43,104 +44,88 @@ namespace triply
     class ModelTreeData
     {
     public:
-        ModelTreeData()
-            : hasColors(false), _skippedVertices( 0 ), _skippedIndices( 0 )
-        { }
+        ModelTreeData();
 
-        void clear()
-        {
-            vertices.clear();
-            colors.clear();
-            normals.clear();
-            indices.clear();
-        }
-        
+        void clear();
+
+        void update();
+
         /*  Write the vectors' sizes and contents to the given stream.  */
-        void toStream( std::ostream& os )
-        {
-            calculateBoundingBox();
-            writeBoundingBox( os );
-            writeVector( os, vertices );
-            writeVector( os, colors );
-            writeVector( os, normals );
-            writeVector( os, indices );
-        }
+        void toStream( std::ostream& os );
         
         /*  Read the vectors' sizes and contents from the given MMF address.  */
-        void fromMemory( char** addr )
-        {
-            clear();
-            readBoundingBox( addr );
-            readVector( addr, vertices );
-            readVector( addr, colors );
-            readVector( addr, normals );
-            readVector( addr, indices );
-            hasColors = !colors.empty();
-        }
+        void fromMemory( char** addr );
 
-        /*  Read the vectors' sizes and skip the contents from the given MMF address.  */
-        void fromMemorySkipData( char** addr )
-        {
-            clear();
-            readBoundingBox( addr );
-            _skippedVertices = skipVector< Vertex >( addr );
-            hasColors = ( skipVector< Color >( addr ) > 0 );
-            skipVector< Normal >( addr );
-            _skippedIndices = skipVector< ShortIndex >( addr );
-        }
-
-        void calculateBoundingBox()
-        {
-            boundingBox[0] = vertices[0];
-            boundingBox[1] = vertices[0];
-            for( size_t v = 1; v < vertices.size(); ++v )
-            {
-                for( size_t i = 0; i < 3; ++i )
-                {
-                    boundingBox[0][i] = std::min( boundingBox[0][i], vertices[v][i] );
-                    boundingBox[1][i] = std::max( boundingBox[1][i], vertices[v][i] );
-                }
-            }
-        }
+        /*  Out-of-core load using a memory map. */
+        bool fromFileOutOfCore( const std::string& filename, size_t startOffset,
+                                size_t* readBytes );
 
         size_t getNumVertices() const
         {
-            return ( vertices.size() > 0 ) ? vertices.size() : _skippedVertices;
+            return _numVertices;
         }
 
         size_t getNumIndices() const
         {
-            return ( indices.size() > 0 ) ? indices.size() : _skippedIndices;
+            return _numIndices;
         }
 
         size_t getTotalSize() const
         {
             return getNumVertices() * sizeof( Vertex )
-                   + getNumVertices() * sizeof( Color ) * size_t( hasColors )
+                   + getNumVertices() * sizeof( Color ) * size_t( _hasColors )
                    + getNumVertices() * sizeof( Normal )
                    + getNumIndices() * sizeof( ShortIndex );
         }
 
-        BoundingBox getBoundingBox() const { return boundingBox; }
+        BoundingBox getBoundingBox() const
+        {
+            return _boundingBox;
+        }
+
+        bool hasColors() const
+        {
+            return _hasColors;
+        }
+
+        bool outOfCore() const
+        {
+            return _outOfCore;
+        }
+
+        bool getVertexData( Index start, char** verticesPtr,
+                            char** normalsPtr, char** colorsPtr );
+        bool getIndexData( Index start, char** indicesPtr );
+
+        Vertex& vertex( Index i );
+        Normal& normal( Index i );
+        Color& color( Index i );
+        ShortIndex& index( Index i );
 
         std::vector< Vertex >       vertices;
         std::vector< Color >        colors;
         std::vector< Normal >       normals;
         std::vector< ShortIndex >   indices;
-        BoundingBox                 boundingBox;
-        bool                        hasColors;
 
-    private:        
-        void writeBoundingBox( std::ostream& os )
+    protected:
+        void calculateBoundingBox();
+        void readBoundingBox( char** addr );
+        void writeBoundingBox( std::ostream& os );
+
+        /*  Helper function to read a vector from the MMF address.  */
+        template< class T >
+        void readVector( char** addr, std::vector< T >& v )
         {
-            os.write( reinterpret_cast< char* >( &boundingBox[0] ), 2 * sizeof( Vertex ) );
+            size_t length;
+            memRead( reinterpret_cast< char* >( &length ), addr,
+                     sizeof( size_t ) );
+            if( length > 0 )
+            {
+                v.resize( length );
+                memRead( reinterpret_cast< char* >( &v[0] ), addr,
+                         length * sizeof( T ) );
+            }
         }
-
-        void readBoundingBox( char** addr )
-        {
-            memRead( reinterpret_cast< char* >( &boundingBox[0] ), addr, 2*sizeof( Vertex ) );
-        }
-
 
         /*  Helper function to write a vector to output stream.  */
         template< class T >
@@ -154,37 +139,16 @@ namespace triply
                           length * sizeof( T ) );
         }
         
-        /*  Helper function to read a vector from the MMF address.  */
-        template< class T >
-        void readVector( char** addr, std::vector< T >& v )
-        {
-            size_t length;
-            memRead( reinterpret_cast< char* >( &length ), addr, 
-                     sizeof( size_t ) );
-            if( length > 0 )
-            {
-                v.resize( length );
-                memRead( reinterpret_cast< char* >( &v[0] ), addr, 
-                         length * sizeof( T ) );
-            }
-        }
+        friend class ModelTreeRoot;
+        friend class ModelTreeDist;
 
-        /*  Helper function to skip a vector from the MMF address.  */
-        template< class T >
-        size_t skipVector( char** addr)
-        {
-            size_t length;
-            memRead( reinterpret_cast< char* >( &length ), addr,
-                     sizeof( size_t ) );
-            if( length > 0 )
-            {
-                *addr += length * sizeof( T );
-            }
-            return length;
-        }
-
-        size_t      _skippedVertices;
-        size_t      _skippedIndices;
+        size_t                      _numVertices;
+        size_t                      _numIndices;
+        char*                       _dataArrays[BUFFER_TYPE_ALL];
+        BoundingBox                 _boundingBox;
+        MMap                        _mmap;
+        bool                        _hasColors;
+        bool                        _outOfCore;
     };
 }
 

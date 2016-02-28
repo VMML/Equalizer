@@ -40,7 +40,6 @@ RenderState::RenderState( const GLEWContext* glewContext )
         , _useFrustumCulling( true )
         , _useBoundingSpheres( false )
         , _outOfCore( false )
-        , _dataManager( 0 )
         , _currentBufferMemory( 0 )
         , _maxBufferMemory( 2ull*1024*1024*1024 ) // 2 Gib
 {
@@ -151,7 +150,7 @@ GLuint RenderState::reserveBufferObject( ResourceKey key, size_t size,
     {
         if( _lruBufferCaches[bufferCacheId].size() > 0 )
         {
-            _lruBufferCaches[bufferCacheId].popAdd( key, deletedKey );
+            _lruBufferCaches[bufferCacheId].pushPop( key, deletedKey );
             _keyCacheMap.erase( deletedKey );
             _keyCacheMap[key] = bufferCacheId;
             bufferId = getBufferObject( deletedKey );
@@ -191,7 +190,7 @@ GLuint RenderState::reserveBufferObject( ResourceKey key, size_t size,
         {
             _currentBufferMemory += bufferSize;
             _keyCacheMap[key] = bufferCacheId;
-            _lruBufferCaches[bufferCacheId].add( key );
+            _lruBufferCaches[bufferCacheId].push( key );
             EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
             EQ_GL_CALL( glBufferData( glTarget, bufferSize, 0, glUsage ));
         }

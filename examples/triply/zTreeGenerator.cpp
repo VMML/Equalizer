@@ -205,7 +205,7 @@ ModelTreeLeaf* ZTreeGenerator::generateLeaf( void* state )
                 // assert number of vertices does not exceed SmallIndex range
                 TRIPLYASSERT( vertexLength );
                 treeData.vertices.push_back( meshData.vertices[i] );
-                if( treeData.hasColors )
+                if( treeData.hasColors( ))
                     treeData.colors.push_back( meshData.colors[i] );
                 treeData.normals.push_back( meshData.normals[i] );
             }

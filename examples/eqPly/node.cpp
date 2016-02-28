@@ -35,23 +35,6 @@
 namespace eqPly
 {
 
-ModelLoader& Node::getModelLoader(const lunchbox::uint128_t &modelId)
-{
-    if( _loadersMap.count( modelId ) == 0 )
-    {
-        Config* config = static_cast< Config* >( getConfig( ));
-        const Model* model = config->getModel( modelId );
-        if( model == 0 )
-            sendError( ERROR_EQPLY_UNKNOWN_MODEL );
-        size_t maxMemoryHint = std::min( ModelLoader::DefaultMaxMemoryHint,
-                                         model->getTotalMemory() );
-        if ( !_loadersMap[modelId].init( model->getBinaryName(), model->hasColors(),
-                                         maxMemoryHint ))
-            sendError( ERROR_EQPLY_INVALID_MODELMANAGER );
-    }
-    return _loadersMap[modelId];
-}
-
 bool Node::configInit( const eq::uint128_t& initID )
 {
     // All render data is static or multi-buffered, we can run asynchronously

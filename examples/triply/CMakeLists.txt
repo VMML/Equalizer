@@ -17,7 +17,6 @@ set(TRIPLY_PUBLIC_HEADERS
   treeGenerator.h
   zTreeGenerator.h
   mkdTreeGenerator.h
-  treeDataManager.h
   renderState.h)
 
 set(TRIPLY_SOURCES
@@ -25,13 +24,13 @@ set(TRIPLY_SOURCES
   mmap.cpp
   meshData.cpp
   modelTreeBase.cpp
+  modelTreeData.cpp
   modelTreeDist.cpp
   modelTreeLeaf.cpp
   modelTreeNode.cpp
   modelTreeRoot.cpp
   zTreeGenerator.cpp
   mkdTreeGenerator.cpp
-  treeDataManager.cpp
   renderState.cpp)
 
 

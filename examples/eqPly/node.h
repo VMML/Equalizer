@@ -48,15 +48,10 @@ namespace eqPly
     public:
         Node( eq::Config* parent ) : eq::Node( parent ) {}
 
-        ModelLoader& getModelLoader( const eq::uint128_t& modelId );
-
     protected:
         virtual ~Node(){}
 
         virtual bool configInit( const eq::uint128_t& initID );
-
-    private:
-        ModelLoadersMap _loadersMap;
     };
 }
 

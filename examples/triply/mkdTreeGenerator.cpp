@@ -205,7 +205,7 @@ ModelTreeLeaf* MKDGenerator::generateLeaf( void* state )
                 // assert number of vertices does not exceed SmallIndex range
                 TRIPLYASSERT( vertexLength );
                 treeData.vertices.push_back( modelData.vertices[i] );
-                if( treeData.hasColors )
+                if( treeData.hasColors() )
                     treeData.colors.push_back( modelData.colors[i] );
                 treeData.normals.push_back( modelData.normals[i] );
             }

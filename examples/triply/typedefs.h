@@ -244,6 +244,12 @@ inline void memRead( char* destination, char** source, size_t length )
     *source += length;
 }
 
+template < typename T>
+inline T* getAs( char* data, size_t index )
+{
+    return reinterpret_cast< T* >( data + index * sizeof( T ));
+}
+
 template <typename IntT>
 inline unsigned int getByte(IntT word, unsigned char byte)
 {
