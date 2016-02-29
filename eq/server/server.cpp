@@ -83,19 +83,23 @@ struct Logger
 
     static void log( Server *parent, const std::string& message )
     {
-         instance( parent )._perflog << message << "\n";
+        Logger& logger = instance( parent );
+        logger._perflog << message << "\n";
+        logger.flush();
     }
 
     static void log( Server *parent, int64_t time, const co::NodeID &nodeID, const std::string& name, const std::string& message, const std::string& src )
     {
         Logger& logger = instance( parent );
         logger._perflog << time << "\t" << nodeID << "\t" << name << ":\t" << message << "\tframe\t" << logger._frame << "\t(" << src << ")\n";
+        logger.flush();
     }
 
     static void log( Server *parent, const co::NodeID &nodeID, const std::string& name, const std::string& message, const std::string& src )
     {
         Logger& logger = instance( parent );
         logger._perflog << logger.getTime() << "\t" << nodeID << "\t" << name << ":\t" << message << "\tframe\t" << logger._frame << "\t(" << src << ")\n";
+        logger.flush();
     }
 
     static void log( Server *parent, int64_t time, co::NodePtr node, const Statistic& statistic )
@@ -165,6 +169,22 @@ struct Logger
         }
     }
 
+    void flush()
+    {
+        if( _frame < 2000 ) return;
+        lunchbox::ScopedMutex<> mutex();
+
+        if( _flushed ) return;
+        std::ofstream logfile;
+    
+        LBINFO << "Creating performance log..." << std::endl;
+        logfile.open("performance.csv", std::ofstream::out | std::ofstream::app);     // TEST
+        logfile << getLog();
+        logfile.close();
+
+        _flushed = true;
+    }
+
     int64_t getTime()
     {
         return _parent->getTime();
@@ -178,26 +198,21 @@ struct Logger
 private:
     Logger(Server *parent)
         : _parent( parent )
+        , _flushed( false )
     {}
 
     Server *_parent;
     co::NodePtr _coAppNode;
     std::stringstream _perflog;
     static int64_t _frame;
+    bool _flushed;
 };
 
 int64_t Logger::_frame = 0;
 
 void deleteLogger( Logger* logger )
 {
-    lunchbox::ScopedMutex<> mutex();
-    std::ofstream logfile;
-
-    LBINFO << "Creating performance log..." << std::endl;
-    logfile.open("performance.csv", std::ofstream::out | std::ofstream::app);     // TEST
-    logfile << logger->getLog();
-    logfile.flush();
-
+//  logger->flush();
     delete logger;
 }
 
