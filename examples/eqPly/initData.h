@@ -53,7 +53,7 @@ namespace eqPly
             { return _glslVertexSource; }
         const std::string& getGLSLFragmentSource() const
             { return _glslFragmentSource; }
-        const uint32_t getMaxGlMemory() const
+        uint32_t getMaxGlMemory() const
             { return _maxGlMemory; }
         bool               useInvertedFaces() const { return _invFaces; }
         bool               showLogo() const         { return _logo; }

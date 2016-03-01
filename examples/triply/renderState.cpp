@@ -29,6 +29,7 @@
 
 
 #include "renderState.h"
+#include <lunchbox/scopedMutex.h>
 
 namespace triply 
 {
@@ -40,7 +41,7 @@ RenderState::RenderState( const GLEWContext* glewContext )
         , _useFrustumCulling( true )
         , _useBoundingSpheres( false )
         , _outOfCore( false )
-        , _currentBufferMemory( 0 )
+        , _allocatedBufferMemory( 0 )
         , _maxBufferMemory( 2ull*1024*1024*1024 ) // 2 Gib
 {
     _range[0] = 0.f;
@@ -122,105 +123,131 @@ Vector4f RenderState::getRegion() const
 GLuint RenderState::reserveBufferObject( ResourceKey key, size_t size,
                                          GLenum glTarget, GLenum glUsage )
 {
-    TRIPLYASSERT( size - 1 < BufferSizeUnit * _lruBufferCaches.size( ));
+    lunchbox::ScopedMutex< lunchbox::SpinLock > mutex( &_lock );
+
+    TRIPLYASSERT( size - 1 < BufferSizeUnit * _availableBuffers.size( ));
 
     const size_t bufferCacheId = ( size - 1 ) / BufferSizeUnit;
     const size_t bufferSize = ( bufferCacheId + 1 ) * BufferSizeUnit;
 
     GLuint bufferId = INVALID;
-    if( _keyCacheMap.find( key ) != _keyCacheMap.end())
+    auto cacheIt = _cacheMap.find( key );
+    if( cacheIt != _cacheMap.end( ))
     {
-        if( _keyCacheMap[key] == bufferCacheId )
+        TRIPLYASSERT( cacheIt->second.cacheId == bufferCacheId );
+        if( cacheIt->second.cacheId == bufferCacheId )
         {
-            _lruBufferCaches[bufferCacheId].use( key );
             bufferId = getBufferObject( key );
-            TRIPLYASSERT( bufferId != INVALID );
-            EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
-            EQ_GL_CALL( glBufferData( glTarget, bufferSize, 0, glUsage ));
+            if( bufferId != INVALID )
+            {
+                if( cacheIt->second.active == false )
+                {
+                    cacheIt->second.active = true;
+                    _availableBuffers[cacheIt->second.cacheId].remove( key );
+                }
+                EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
+            }
         }
-        else
-        {
-            TRIPLYASSERT( false );
-            return INVALID;
-        }
+
+        return bufferId;
     }
 
+    const size_t MinCacheItems = 0; //( 0.01 * _maxBufferMemory / BufferSizesCount ) / BufferSizeUnit;
     ResourceKey deletedKey = 0;
-    if( _currentBufferMemory + bufferSize > _maxBufferMemory )
+    if( _allocatedBufferMemory + bufferSize > _maxBufferMemory )
     {
-        if( _lruBufferCaches[bufferCacheId].size() > 0 )
+        if( _availableBuffers[bufferCacheId].size() > MinCacheItems )
         {
-            _lruBufferCaches[bufferCacheId].pushPop( key, deletedKey );
-            _keyCacheMap.erase( deletedKey );
-            _keyCacheMap[key] = bufferCacheId;
+            _availableBuffers[bufferCacheId].pop( &deletedKey );
+            TRIPLYASSERT( deletedKey != 0 && _cacheMap.count( deletedKey ) > 0 );
+            _cacheMap.erase( deletedKey );
             bufferId = getBufferObject( deletedKey );
             TRIPLYASSERT( bufferId != INVALID );
-            remapBufferObject( deletedKey, key );
-            EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
-            EQ_GL_CALL( glBufferData( glTarget, bufferSize, 0, glUsage ));
+            if( bufferId != INVALID )
+            {
+                _cacheMap[key] = KeyInfo( bufferCacheId, true );
+                remapBufferObject( deletedKey, key );
+            }
         }
         else
         {
-            size_t tmpCacheId = ( bufferCacheId + 1 ) % _lruBufferCaches.size();
+            size_t tmpCacheId = ( bufferCacheId + 1 ) % BufferSizesCount;
             size_t tmpBufferSize = ( tmpCacheId + 1 ) * BufferSizeUnit;
-            while( _currentBufferMemory + bufferSize > _maxBufferMemory )
+            size_t disposableMemory = 0;
+            while( _allocatedBufferMemory + bufferSize > _maxBufferMemory )
             {
-                if( _lruBufferCaches[tmpCacheId].size() > 0 )
+                if( _availableBuffers[tmpCacheId].size() > MinCacheItems )
                 {
                     deletedKey = 0;
-                    _lruBufferCaches[tmpCacheId].pop( deletedKey );
-                    _keyCacheMap.erase( deletedKey );
-                    if( deletedKey != 0 )
-                    {
-                        bufferId = getBufferObject( deletedKey );
-                        TRIPLYASSERT( bufferId != INVALID );
-                        deleteBufferObject( deletedKey );
-                        _currentBufferMemory -= tmpBufferSize;
-                    }
+                    _availableBuffers[tmpCacheId].pop( &deletedKey );
+                    TRIPLYASSERT( deletedKey != 0 && _cacheMap.count( deletedKey ) > 0 );
+                    _cacheMap.erase( deletedKey );
+                    bufferId = getBufferObject( deletedKey );
+                    TRIPLYASSERT( bufferId != INVALID );
+                    deleteBufferObject( deletedKey );
+                    bufferId = INVALID ;
+                    _allocatedBufferMemory -= tmpBufferSize;
                 }
-                tmpCacheId = ( tmpCacheId + 1 ) % _lruBufferCaches.size();
+
+                disposableMemory +=
+                        _availableBuffers[tmpCacheId].size() * ( tmpCacheId + 1 ) * BufferSizeUnit;
+                tmpCacheId = ( tmpCacheId + 1 ) % BufferSizesCount;
+
+                if( tmpCacheId == bufferCacheId && disposableMemory < bufferSize )
+                {
+                    throw RenderException( "GPU manager run out of memory!!" );
+//                    TRIPLYERROR << "GPU manager run out of memory!!";
+//                    return INVALID;
+                }
             }
         }
     }
 
-    if( bufferId == 0)
+    if( bufferId == INVALID )
     {
         bufferId = newBufferObject( key );
         if( bufferId != INVALID )
         {
-            _currentBufferMemory += bufferSize;
-            _keyCacheMap[key] = bufferCacheId;
-            _lruBufferCaches[bufferCacheId].push( key );
-            EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
-            EQ_GL_CALL( glBufferData( glTarget, bufferSize, 0, glUsage ));
+            _allocatedBufferMemory += bufferSize;
+            _cacheMap[key] = KeyInfo( bufferCacheId, true );
         }
     }
 
     TRIPLYASSERT( bufferId != INVALID );
+
+    if( bufferId != INVALID )
+    {
+        EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
+        EQ_GL_CALL( glBufferData( glTarget, bufferSize, 0, glUsage ));
+    }
 
     return bufferId;
 }
 
 GLuint RenderState::bindBufferObject( ResourceKey key, GLenum glTarget )
 {
-    GLuint bufferId = getBufferObject( key );
-    TRIPLYASSERT( bufferId != INVALID );
-    if( bufferId != INVALID )
-    {
-        _lruBufferCaches[_keyCacheMap[key]].use( key );
-        EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
-    }
+    GLuint bufferId = useBufferObject( key );
+    if( bufferId == INVALID )
+        throw RenderException( "Missing allocated VBO!!" );
+
+    EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
 
     return bufferId;
 }
 
 GLuint RenderState::useBufferObject( ResourceKey key )
 {
+    lunchbox::ScopedMutex< lunchbox::SpinLock > mutex( &_lock );
+
     GLuint bufferId = getBufferObject( key );
-    TRIPLYASSERT( bufferId != INVALID );
     if( bufferId != INVALID )
     {
-        _lruBufferCaches[_keyCacheMap[key]].use( key );
+        auto it = _cacheMap.find( key );
+        if( it != _cacheMap.end( ) && it->second.active == false )
+        {
+            it->second.active = true;
+            _availableBuffers[it->second.cacheId].remove( key );
+        }
     }
 
     return bufferId;
@@ -228,14 +255,29 @@ GLuint RenderState::useBufferObject( ResourceKey key )
 
 void RenderState::discardBufferObject( ResourceKey key )
 {
-    if( _keyCacheMap.find( key ) != _keyCacheMap.end( ))
+    lunchbox::ScopedMutex< lunchbox::SpinLock > mutex( &_lock );
+
+    auto it = _cacheMap.find( key );
+    if( it != _cacheMap.end( ) && it->second.active == true )
     {
-        const size_t bufferCacheId = _keyCacheMap[key];
+        it->second.active = false;
+        _availableBuffers[it->second.cacheId].push( key );
+    }
+}
+
+void RenderState::removeBufferObject( ResourceKey key )
+{
+    lunchbox::ScopedMutex< lunchbox::SpinLock > mutex( &_lock );
+
+    auto it = _cacheMap.find( key );
+    if( it != _cacheMap.end( ))
+    {
+        const size_t bufferCacheId = it->second.cacheId;
         const size_t bufferSize = ( bufferCacheId + 1 ) * BufferSizeUnit;
-        _lruBufferCaches[bufferCacheId].remove( key );
-        _keyCacheMap.erase( key );
+        _availableBuffers[bufferCacheId].remove( key );
+        _cacheMap.erase( it );
         deleteBufferObject( key );
-        _currentBufferMemory -= bufferSize;
+        _allocatedBufferMemory -= bufferSize;
     }
 }
 

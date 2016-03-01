@@ -97,10 +97,10 @@ namespace triply
                             char** normalsPtr, char** colorsPtr );
         bool getIndexData( Index start, char** indicesPtr );
 
-        Vertex& vertex( Index i );
-        Normal& normal( Index i );
-        Color& color( Index i );
-        ShortIndex& index( Index i );
+        Vertex& vertexAt( Index i );
+        Normal& normalAt( Index i );
+        Color& colorAt( Index i );
+        ShortIndex& indexAt( Index i );
 
         std::vector< Vertex >       vertices;
         std::vector< Color >        colors;

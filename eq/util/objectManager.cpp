@@ -522,6 +522,9 @@ bool ObjectManager::remapBuffer( const void* oldKey,
     ObjectHash::iterator it = _impl->buffers.find( oldKey );
     if( it != _impl->buffers.end( ) && oldKey != newKey )
     {
+        if( _impl->buffers.find( newKey ) != _impl->buffers.end( ))
+            LBWARN << "Remapping to a pre-existing key: potential leak "<< std::endl;
+
         _impl->buffers[newKey] = it->second;
         _impl->buffers.erase( it );
         return true;

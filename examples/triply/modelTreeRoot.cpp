@@ -199,6 +199,7 @@ bool ModelTreeRoot::setupTree( MeshData& modelData,
     unsigned expectedCount = progressPtr->count() + TreeGenerator::MaxProgressCount;
 
     treeGenerator->generate( modelData, *this, _treeData, *progressPtr );
+    _treeData.update();
 
     while( progressPtr->count() < expectedCount )
         ++(*progressPtr);

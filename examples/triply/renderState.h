@@ -35,6 +35,7 @@
 #include "typedefs.h"
 #include "lruCache.h"
 #include <triply/api.h>
+#include <lunchbox/spinLock.h>
 #include <map>
 
 namespace triply
@@ -97,16 +98,19 @@ public:
     TRIPLY_API const GLEWContext* glewGetContext() const
         { return _glewContext; }
 
+    // ---- Functions to use a simple GPU memory manager ---
     TRIPLY_API GLuint reserveBufferObject( ResourceKey key, size_t size,
                                            GLenum glTarget, GLenum glUsage );
     TRIPLY_API GLuint bindBufferObject( ResourceKey key, GLenum glTarget );
     TRIPLY_API GLuint useBufferObject( ResourceKey key );
     TRIPLY_API void discardBufferObject( ResourceKey key );
+    TRIPLY_API void removeBufferObject( ResourceKey key );
 
     TRIPLY_API void setMaxBufferMemory( size_t maxMemSize )
         { _maxBufferMemory = maxMemSize; }
     TRIPLY_API size_t getMaxBufferMemory()
         { return _maxBufferMemory; }
+    // ----
 
 protected:
     TRIPLY_API explicit RenderState( const GLEWContext* glewContext );
@@ -126,10 +130,20 @@ private:
     static const size_t BufferSizeUnit = 65536; // 64 Kib
     static const size_t BufferSizesCount = 20;
 
-    size_t _currentBufferMemory;
+    struct KeyInfo
+    {
+        KeyInfo( size_t id=-1, bool isActive=false )
+            : cacheId( id ), active( isActive ) {}
+
+        size_t cacheId;
+        bool active;
+    };
+
+    size_t _allocatedBufferMemory;
     size_t _maxBufferMemory;
-    stde::hash_map< ResourceKey, size_t > _keyCacheMap;
-    std::array< LRUCache< ResourceKey >, BufferSizesCount > _lruBufferCaches;
+    stde::hash_map< ResourceKey, KeyInfo > _cacheMap;
+    std::array< LRUCache< ResourceKey >, BufferSizesCount > _availableBuffers;
+    lunchbox::SpinLock _lock;
 };
 
 

@@ -181,25 +181,25 @@ bool ModelTreeData::getIndexData(Index start, char** indicesPtr )
     return true;
 }
 
-Vertex& ModelTreeData::vertex( Index i )
+Vertex& ModelTreeData::vertexAt( Index i )
 {
     TRIPLYASSERT( i < _numVertices );
     return *( reinterpret_cast< Vertex* >( _dataArrays[VERTEX_BUFFER_TYPE] + ( i * sizeof( Vertex ))));
 }
 
-Normal& ModelTreeData::normal( Index i )
+Normal& ModelTreeData::normalAt( Index i )
 {
     TRIPLYASSERT( i < _numVertices );
     return *( reinterpret_cast< Normal* >( _dataArrays[NORMAL_BUFFER_TYPE] + ( i * sizeof( Normal ))));
 }
 
-Color& ModelTreeData::color( Index i )
+Color& ModelTreeData::colorAt( Index i )
 {
     TRIPLYASSERT( i < _numVertices && _hasColors );
     return *( reinterpret_cast< Color* >( _dataArrays[COLOR_BUFFER_TYPE] + ( i * sizeof( Color ))));
 }
 
-ShortIndex& ModelTreeData::index( Index i )
+ShortIndex& ModelTreeData::indexAt( Index i )
 {
     TRIPLYASSERT( i < _numIndices );
     return *( reinterpret_cast< ShortIndex* >( _dataArrays[INDEX_BUFFER_TYPE] + ( i * sizeof( ShortIndex ))));

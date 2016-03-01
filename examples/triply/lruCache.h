@@ -71,7 +71,7 @@ public:
         }
     }
 
-    TRIPLY_API void use( const KeyT& key )
+    TRIPLY_API void touch( const KeyT& key )
     {
         auto it = _keyMap.find( key );
         if( it != _keyMap.end( ))
@@ -88,13 +88,15 @@ public:
         }
     }
 
-    TRIPLY_API void pop( KeyT& deletedKey )
+    TRIPLY_API void pop( KeyT* deletedKeyPtr = 0 )
     {
         if( _keyMap.size() > 0 )
         {
-            deletedKey = _lruList.front();
+            KeyT lastKey = _lruList.front();
             _lruList.pop_front();
-            _keyMap.erase( deletedKey );
+            _keyMap.erase( lastKey );
+            if( deletedKeyPtr != 0 )
+                *deletedKeyPtr = lastKey;
         }
     }
 

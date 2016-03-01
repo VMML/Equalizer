@@ -87,12 +87,12 @@ void ModelTreeLeaf::clear()
 const BoundingSphere& ModelTreeLeaf::updateBoundingSphere()
 {
     // Initialize leaf bounding box using the vertices inside the leaf node
-    _boundingBox[0] = _treeData.vertex( _vertexStart );
-    _boundingBox[1] = _treeData.vertex( _vertexStart );
+    _boundingBox[0] = _treeData.vertices[ _vertexStart ];
+    _boundingBox[1] = _treeData.vertices[ _vertexStart ];
 
     for( Index i = 1; i < _vertexLength; ++i )
     {
-        const Vertex& vertex = _treeData.vertex( _vertexStart + i );
+        const Vertex& vertex = _treeData.vertices[ _vertexStart + i ];
         _boundingBox[0][0] = std::min( _boundingBox[0][0], vertex[0] );
         _boundingBox[1][0] = std::max( _boundingBox[1][0], vertex[0] );
         _boundingBox[0][1] = std::min( _boundingBox[0][1], vertex[1] );
@@ -124,7 +124,7 @@ const BoundingSphere& ModelTreeLeaf::updateBoundingSphere()
     // 2) test all points to be in the estimated bounding sphere
     for( Index offset = 0; offset < _vertexLength; ++offset )
     {
-        const Vertex& vertex = _treeData.vertex( _vertexStart + offset );
+        const Vertex& vertex = _treeData.vertices[ _vertexStart + offset ];
         const Vertex centerToPoint   = vertex - center;
         const float  distanceSquared = centerToPoint.squared_length();
 
@@ -150,7 +150,7 @@ const BoundingSphere& ModelTreeLeaf::updateBoundingSphere()
     // 2a) re-test all points to be in the estimated bounding sphere
     for( Index offset = 0; offset < _vertexLength; ++offset )
     {
-        const Vertex& vertex = _treeData.vertex( _vertexStart + offset );
+        const Vertex& vertex = _treeData.vertices[ _vertexStart + offset ];
 
         const Vertex centerToPoint   = vertex - center;
         const float  distanceSquared = centerToPoint.squared_length();
@@ -237,6 +237,7 @@ void ModelTreeLeaf::setupRendering( RenderState& state,
                                                _vertexLength * sizeof( Vertex ),
                                                GL_ARRAY_BUFFER, GL_STATIC_DRAW );
         }
+
         if( glBuffers[NORMAL_BUFFER_TYPE] == state.INVALID )
         {
             glBuffers[NORMAL_BUFFER_TYPE] =
@@ -266,6 +267,17 @@ void ModelTreeLeaf::setupRendering( RenderState& state,
                     state.reserveBufferObject( charThis + INDEX_BUFFER_TYPE,
                                                _indexLength * sizeof( ShortIndex ),
                                                GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW );
+            TRIPLYASSERT( glBuffers[INDEX_BUFFER_TYPE] != state.INVALID );
+            TRIPLYASSERT( state.getBufferObject( charThis  + INDEX_BUFFER_TYPE ) != state.INVALID );
+        }
+
+        for( int i = VERTEX_BUFFER_TYPE; i < BUFFER_TYPE_ALL; ++i )
+        {
+            TRIPLYASSERT( glBuffers[i] != state.INVALID );
+            TRIPLYASSERT( state.getBufferObject( charThis  + i ) != state.INVALID );
+            TRIPLYASSERT( state.useBufferObject( charThis  + i ) == state.getBufferObject( charThis  + i ));
+            TRIPLYASSERT( state.useBufferObject( charThis  + i ) != state.INVALID );
+            TRIPLYASSERT( glBuffers[i] == state.useBufferObject( charThis  + i ) );
         }
 
         // Upload data to VBOs
@@ -378,11 +390,12 @@ void ModelTreeLeaf::renderImmediate( RenderState& state ) const
 /*  Render the leaf with buffer objects.  */
 void ModelTreeLeaf::renderBufferObject( RenderState& state ) const
 {
+    const char* charThis = reinterpret_cast< const char* >( this );
+
     GLuint buffers[BUFFER_TYPE_ALL];
     for( int i = VERTEX_BUFFER_TYPE; i < BUFFER_TYPE_ALL; ++i )
     {
-        buffers[i] =
-            state.getBufferObject( reinterpret_cast< const char* >(this) + i );
+        buffers[i] = state.useBufferObject( charThis  + i );
     }
 
     if( buffers[VERTEX_BUFFER_TYPE] == state.INVALID ||
@@ -393,22 +406,26 @@ void ModelTreeLeaf::renderBufferObject( RenderState& state ) const
         setupRendering( state, buffers );
     }
 
-    const char* charThis = reinterpret_cast< const char* >( this );
+    for( int i = VERTEX_BUFFER_TYPE; i < BUFFER_TYPE_ALL; ++i )
+    {
+        TRIPLYASSERT( buffers[i] == state.useBufferObject( charThis  + i ));
+    }
+
     if( state.useColors() )
     {
-        //glBindBuffer( GL_ARRAY_BUFFER, buffers[COLOR_BUFFER_TYPE] );
         state.bindBufferObject( charThis + COLOR_BUFFER_TYPE, GL_ARRAY_BUFFER );
         glColorPointer( 3, GL_UNSIGNED_BYTE, 0, 0 );
     }
-    //glBindBuffer( GL_ARRAY_BUFFER, buffers[NORMAL_BUFFER_TYPE] );
     state.bindBufferObject( charThis + NORMAL_BUFFER_TYPE, GL_ARRAY_BUFFER );
     glNormalPointer( GL_FLOAT, 0, 0 );
-    //glBindBuffer( GL_ARRAY_BUFFER, buffers[VERTEX_BUFFER_TYPE] );
     state.bindBufferObject( charThis + VERTEX_BUFFER_TYPE, GL_ARRAY_BUFFER );
     glVertexPointer( 3, GL_FLOAT, 0, 0 );
-    //glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[INDEX_BUFFER_TYPE] );
     state.bindBufferObject( charThis + INDEX_BUFFER_TYPE, GL_ELEMENT_ARRAY_BUFFER );
     glDrawElements( GL_TRIANGLES, GLsizei(_indexLength), GL_UNSIGNED_SHORT, 0 );
+    for( int i = VERTEX_BUFFER_TYPE; i < BUFFER_TYPE_ALL; ++i )
+    {
+        state.discardBufferObject( charThis  + i );
+    }
 }
 
 /*  Render the leaf with a display list.  */
@@ -431,15 +448,16 @@ void ModelTreeLeaf::renderDisplayList( RenderState& state ) const
 inline
 void ModelTreeLeaf::renderVAObject( RenderState& state ) const
 {
-    static const int VAO_TYPE = BUFFER_TYPE_ALL;
+    const int VAO_TYPE = BUFFER_TYPE_ALL;
+    const char* charThis = reinterpret_cast< const char* >( this );
+
     GLuint objects[BUFFER_TYPE_ALL + 1];
     for( int i = VERTEX_BUFFER_TYPE; i < BUFFER_TYPE_ALL; ++i )
     {
-        objects[i] =
-            state.getBufferObject( reinterpret_cast< const char* >(this) + i );
+        objects[i] = state.useBufferObject( charThis  + i );
     }
     objects[VAO_TYPE] =
-        state.getVertexArray( reinterpret_cast< const char* >(this));
+        state.getVertexArray( charThis );
 
     if( objects[VERTEX_BUFFER_TYPE] == state.INVALID ||
         objects[NORMAL_BUFFER_TYPE] == state.INVALID ||
@@ -450,7 +468,6 @@ void ModelTreeLeaf::renderVAObject( RenderState& state ) const
         setupRendering( state, objects );
     }
 
-    const char* charThis = reinterpret_cast< const char* >( this );
     state.useBufferObject( charThis + VERTEX_BUFFER_TYPE );
     state.useBufferObject( charThis + NORMAL_BUFFER_TYPE );
     if( state.useColors( ))
@@ -460,6 +477,10 @@ void ModelTreeLeaf::renderVAObject( RenderState& state ) const
     glBindVertexArray( objects[VAO_TYPE] );
     glDrawElements( GL_TRIANGLES, GLsizei(_indexLength), GL_UNSIGNED_SHORT, 0 );
     glBindVertexArray( 0 );
+    for( int i = VERTEX_BUFFER_TYPE; i < BUFFER_TYPE_ALL; ++i )
+    {
+        state.discardBufferObject( charThis  + i );
+    }
 }
 
 /*  Read leaf node from memory.  */

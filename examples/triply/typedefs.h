@@ -106,11 +106,21 @@ typedef vmml::vector< 4, float >      Vector4f;
 typedef size_t                        Index;
 typedef unsigned short                ShortIndex;
 
-// mesh exception
+// Mesh exception
 struct MeshException : public std::exception
 {
     explicit MeshException( const std::string& msg ) : _message( msg ) {}
     virtual ~MeshException() throw() {}
+    virtual const char* what() const throw() { return _message.c_str(); }
+private:
+    std::string _message;
+};
+
+// Render exception
+struct RenderException : public std::exception
+{
+    explicit RenderException( const std::string& msg ) : _message( msg ) {}
+    virtual ~RenderException() throw() {}
     virtual const char* what() const throw() { return _message.c_str(); }
 private:
     std::string _message;
