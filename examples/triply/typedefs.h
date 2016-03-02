@@ -75,6 +75,29 @@
 #include <string>
 #include <sstream>
 
+#ifdef NDEBUG
+#  define TRIPLY_GL_ERROR( when ) {}
+#  define TRIPLY_GL_CALL( code ) { code; }
+#else // NDEBUG
+#  define TRIPLY_GL_ERROR( when )                                       \
+    {                                                                   \
+        const GLenum eqGlError = glGetError();                          \
+        if( eqGlError )                                                 \
+        {                                                               \
+            TRIPLYWARN << "Got GlError = " << eqGlError << " "          \
+                       << when << " in " << __FILE__ << ':' << __LINE__ \
+                       << std::endl << std::endl;                       \
+            throw RenderException( "GlError" );                         \
+        }                                                               \
+    }
+#  define TRIPLY_GL_CALL( code )                                        \
+    {                                                                   \
+        TRIPLY_GL_ERROR( std::string( "before " ) + #code );            \
+        code;                                                           \
+        TRIPLY_GL_ERROR( std::string( "after " ) + #code );             \
+    }
+#endif
+
 namespace triply
 {
 // class forward declarations

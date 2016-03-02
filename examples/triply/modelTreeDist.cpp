@@ -184,9 +184,24 @@ void ModelTreeDist::getInstanceData( co::DataOStream& os )
             os << _treeRoot->_inCoreData;
             if( _treeRoot->_inCoreData )
             {
-                const ModelTreeData& treeData = _treeRoot->_treeData;
-                os << treeData.vertices << treeData.colors
-                   << treeData.normals << treeData.indices;
+                LBASSERT( !_treeRoot->_treeData._outOfCore );
+
+                os << _treeRoot->_treeData._hasColors;
+                os << _treeRoot->_treeData._numVertices
+                   << _treeRoot->_treeData._numIndices;
+                os << _treeRoot->_treeData._boundingBox[0]
+                   << _treeRoot->_treeData._boundingBox[1];
+                os << _treeRoot->_treeData.vertices
+                   << _treeRoot->_treeData.colors
+                   << _treeRoot->_treeData.normals
+                   << _treeRoot->_treeData.indices;
+            }
+            else
+            {
+                LBASSERT( _treeRoot->_treeData._outOfCore );
+
+                os << _treeRoot->_treeData._mmapStartOffset;
+                os << _treeRoot->_treeData._mmapFName;
             }
             os << _treeRoot->_partition;
             os << _treeRoot->_name;
@@ -236,11 +251,31 @@ void ModelTreeDist::applyInstanceData( co::DataIStream& is )
 
             is >> root->_invertFaces;
             is >> root->_inCoreData;
-            if( root->_inCoreData)
+            root->_treeData._outOfCore = !(root->_inCoreData);
+            if( root->_inCoreData )
             {
-                ModelTreeData& treeData = root->_treeData;
-                is >> treeData.vertices >> treeData.colors
-                   >> treeData.normals >> treeData.indices;
+                LBASSERT( root->_treeData._outOfCore == false );
+
+                is >> root->_treeData._hasColors;
+                is >> root->_treeData._numVertices
+                   >> root->_treeData._numIndices;
+                is >> root->_treeData._boundingBox[0]
+                   >> root->_treeData._boundingBox[1];
+                is >> root->_treeData.vertices
+                   >> root->_treeData.colors
+                   >> root->_treeData.normals
+                   >> root->_treeData.indices;
+                root->_treeData.refreshState( false );
+            }
+            else
+            {
+                LBASSERT( root->_treeData._outOfCore == true);
+
+                size_t startOffset;
+                std::string filename;
+                is >> startOffset;
+                is >> filename;
+                root->_treeData.fromFile( filename, startOffset, 0 );
             }
             is >> root->_partition;
             is >> root->_name;

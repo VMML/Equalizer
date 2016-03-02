@@ -123,7 +123,7 @@ Vector4f RenderState::getRegion() const
 GLuint RenderState::reserveBufferObject( ResourceKey key, size_t size,
                                          GLenum glTarget, GLenum glUsage )
 {
-    lunchbox::ScopedMutex< lunchbox::SpinLock > mutex( &_lock );
+    lunchbox::ScopedFastWrite mutex( &_lock );
 
     TRIPLYASSERT( size - 1 < BufferSizeUnit * _availableBuffers.size( ));
 
@@ -145,7 +145,7 @@ GLuint RenderState::reserveBufferObject( ResourceKey key, size_t size,
                     cacheIt->second.active = true;
                     _availableBuffers[cacheIt->second.cacheId].remove( key );
                 }
-                EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
+                TRIPLY_GL_CALL( glBindBuffer( glTarget, bufferId ));
             }
         }
 
@@ -167,6 +167,7 @@ GLuint RenderState::reserveBufferObject( ResourceKey key, size_t size,
             {
                 _cacheMap[key] = KeyInfo( bufferCacheId, true );
                 remapBufferObject( deletedKey, key );
+                TRIPLY_GL_CALL( glInvalidateBufferData( bufferId ));
             }
         }
         else
@@ -217,8 +218,8 @@ GLuint RenderState::reserveBufferObject( ResourceKey key, size_t size,
 
     if( bufferId != INVALID )
     {
-        EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
-        EQ_GL_CALL( glBufferData( glTarget, bufferSize, 0, glUsage ));
+        TRIPLY_GL_CALL( glBindBuffer( glTarget, bufferId ));
+        TRIPLY_GL_CALL( glBufferData( glTarget, bufferSize, 0, glUsage ));
     }
 
     return bufferId;
@@ -230,14 +231,14 @@ GLuint RenderState::bindBufferObject( ResourceKey key, GLenum glTarget )
     if( bufferId == INVALID )
         throw RenderException( "Missing allocated VBO!!" );
 
-    EQ_GL_CALL( glBindBuffer( glTarget, bufferId ));
+    TRIPLY_GL_CALL( glBindBuffer( glTarget, bufferId ));
 
     return bufferId;
 }
 
 GLuint RenderState::useBufferObject( ResourceKey key )
 {
-    lunchbox::ScopedMutex< lunchbox::SpinLock > mutex( &_lock );
+    lunchbox::ScopedFastWrite mutex( &_lock );
 
     GLuint bufferId = getBufferObject( key );
     if( bufferId != INVALID )
@@ -255,7 +256,7 @@ GLuint RenderState::useBufferObject( ResourceKey key )
 
 void RenderState::discardBufferObject( ResourceKey key )
 {
-    lunchbox::ScopedMutex< lunchbox::SpinLock > mutex( &_lock );
+    lunchbox::ScopedFastWrite mutex( &_lock );
 
     auto it = _cacheMap.find( key );
     if( it != _cacheMap.end( ) && it->second.active == true )
@@ -267,7 +268,7 @@ void RenderState::discardBufferObject( ResourceKey key )
 
 void RenderState::removeBufferObject( ResourceKey key )
 {
-    lunchbox::ScopedMutex< lunchbox::SpinLock > mutex( &_lock );
+    lunchbox::ScopedFastWrite mutex( &_lock );
 
     auto it = _cacheMap.find( key );
     if( it != _cacheMap.end( ))
@@ -299,7 +300,7 @@ void SimpleRenderState::deleteDisplayList( const void* key )
 {
     if( _displayLists.find( key ) != _displayLists.end() )
     {
-        EQ_GL_CALL( glDeleteLists( _displayLists[key], 1 ));
+        TRIPLY_GL_CALL( glDeleteLists( _displayLists[key], 1 ));
         _displayLists.erase( key );
     }
 }
@@ -315,7 +316,7 @@ GLuint SimpleRenderState::newBufferObject( const void* key )
 {
     if( !GLEW_VERSION_1_5 )
         return INVALID;
-    EQ_GL_CALL( glGenBuffers( 1, &_bufferObjects[key] ));
+    TRIPLY_GL_CALL( glGenBuffers( 1, &_bufferObjects[key] ));
     return _bufferObjects[key];
 }
         
@@ -323,7 +324,7 @@ void SimpleRenderState::deleteBufferObject( const void* key )
 {
     if( _bufferObjects.find( key ) != _bufferObjects.end() )
     {
-        EQ_GL_CALL( glDeleteBuffers( 1, &_bufferObjects[key] ));
+        TRIPLY_GL_CALL( glDeleteBuffers( 1, &_bufferObjects[key] ));
         _bufferObjects.erase( key );
     }
 }
@@ -350,7 +351,7 @@ GLuint SimpleRenderState::getVertexArray( const void* key )
 
 GLuint SimpleRenderState::newVertexArray( const void* key )
 {
-    EQ_GL_CALL( glGenVertexArrays( 1, &_vertexArrays[key] ));
+    TRIPLY_GL_CALL( glGenVertexArrays( 1, &_vertexArrays[key] ));
     return _vertexArrays[key];
 }
 
@@ -358,7 +359,7 @@ void SimpleRenderState::deleteVertexArray( const void* key )
 {
     if( _vertexArrays.find( key ) != _vertexArrays.end() )
     {
-        EQ_GL_CALL( glDeleteVertexArrays( 1, &_vertexArrays[key] ));
+        TRIPLY_GL_CALL( glDeleteVertexArrays( 1, &_vertexArrays[key] ));
         _vertexArrays.erase( key );
     }
 }
@@ -366,13 +367,13 @@ void SimpleRenderState::deleteVertexArray( const void* key )
 void SimpleRenderState::deleteGlObjects()
 {
     for( GLMapCIter i = _displayLists.begin(); i != _displayLists.end(); ++i )
-        EQ_GL_CALL( glDeleteLists( i->second, 1 ));
+        TRIPLY_GL_CALL( glDeleteLists( i->second, 1 ));
 
     for( GLMapCIter i = _bufferObjects.begin(); i != _bufferObjects.end(); ++i )
-        EQ_GL_CALL( glDeleteBuffers( 1, &(i->second) ));
+        TRIPLY_GL_CALL( glDeleteBuffers( 1, &(i->second) ));
 
     for( GLMapCIter i = _vertexArrays.begin(); i != _vertexArrays.end(); ++i )
-        EQ_GL_CALL( glDeleteVertexArrays( 1, &(i->second) ));
+        TRIPLY_GL_CALL( glDeleteVertexArrays( 1, &(i->second) ));
 
     _displayLists.clear();
     _bufferObjects.clear();

@@ -39,6 +39,8 @@ ModelTreeData::ModelTreeData()
 
 void ModelTreeData::clear()
 {
+    _hasColors = false;
+    _outOfCore = false;
     _numVertices = 0;
     _numIndices = 0;
     _dataArrays[VERTEX_BUFFER_TYPE] = 0;
@@ -50,21 +52,22 @@ void ModelTreeData::clear()
     normals.clear();
     indices.clear();
     _boundingBox = BoundingBox();
-    _hasColors = false;
-    _outOfCore = false;
 }
         
-void ModelTreeData::update()
+void ModelTreeData::refreshState( bool recalculateBBox )
 {
-    calculateBoundingBox();
+    _hasColors = !colors.empty();
+    _outOfCore = false;
+    _numVertices = vertices.size();
+    _numIndices = indices.size();
     _dataArrays[VERTEX_BUFFER_TYPE] = reinterpret_cast< char* >( vertices.data( ));
     _dataArrays[NORMAL_BUFFER_TYPE] = reinterpret_cast< char* >( normals.data( ));
     _dataArrays[COLOR_BUFFER_TYPE] = reinterpret_cast< char* >( colors.data( ));
     _dataArrays[INDEX_BUFFER_TYPE] = reinterpret_cast< char* >( indices.data( ));
-    _numVertices = vertices.size();
-    _numIndices = indices.size();
-    _hasColors = !colors.empty();
-    _outOfCore = false;
+    if( recalculateBBox )
+    {
+        calculateBoundingBox();
+    }
 }
 
 
@@ -96,9 +99,8 @@ void ModelTreeData::fromMemory( char** addr )
     _outOfCore = false;
 }
 
-bool ModelTreeData::fromFileOutOfCore( const std::string& filename,
-                                       size_t startOffset,
-                                       size_t* readBytes )
+bool ModelTreeData::fromFile( const std::string& filename, size_t startOffset,
+                              size_t* readBytes )
 {
     if( readBytes != 0)
         *readBytes = 0;
@@ -136,9 +138,12 @@ bool ModelTreeData::fromFileOutOfCore( const std::string& filename,
             _dataArrays[INDEX_BUFFER_TYPE] = dataAddr;
             dataAddr += _numIndices * sizeof( ShortIndex );
 
+            _outOfCore = true;
+            _mmapStartOffset = startOffset;
+            _mmapFName = filename;
+
             if( readBytes != 0)
                 *readBytes = dataAddr - ( _mmap.getPtr() + startOffset );
-            _outOfCore = true;
         }
         catch( const std::exception& e )
         {

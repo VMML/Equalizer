@@ -55,8 +55,7 @@ public:
                                                  const eq::uint128_t& modelID );
 
 protected:
-    ModelTreeDist( ModelTreeRoot* treeRoot,
-                              ModelTreeBase* treeNode );
+    ModelTreeDist( ModelTreeRoot* treeRoot, ModelTreeBase* treeNode );
 
     void clear( );
     unsigned getNumberOfChildren( ) const;

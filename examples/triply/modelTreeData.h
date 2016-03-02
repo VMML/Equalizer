@@ -48,7 +48,7 @@ namespace triply
 
         void clear();
 
-        void update();
+        void refreshState( bool recalculateBBox = true );
 
         /*  Write the vectors' sizes and contents to the given stream.  */
         void toStream( std::ostream& os );
@@ -57,8 +57,8 @@ namespace triply
         void fromMemory( char** addr );
 
         /*  Out-of-core load using a memory map. */
-        bool fromFileOutOfCore( const std::string& filename, size_t startOffset,
-                                size_t* readBytes );
+        bool fromFile( const std::string& filename, size_t startOffset,
+                       size_t* readBytes );
 
         size_t getNumVertices() const
         {
@@ -142,13 +142,15 @@ namespace triply
         friend class ModelTreeRoot;
         friend class ModelTreeDist;
 
+        bool                        _hasColors;
+        bool                        _outOfCore;
         size_t                      _numVertices;
         size_t                      _numIndices;
         char*                       _dataArrays[BUFFER_TYPE_ALL];
         BoundingBox                 _boundingBox;
+        size_t                      _mmapStartOffset;
+        std::string                 _mmapFName;
         MMap                        _mmap;
-        bool                        _hasColors;
-        bool                        _outOfCore;
     };
 }
 

@@ -199,7 +199,7 @@ bool ModelTreeRoot::setupTree( MeshData& modelData,
     unsigned expectedCount = progressPtr->count() + TreeGenerator::MaxProgressCount;
 
     treeGenerator->generate( modelData, *this, _treeData, *progressPtr );
-    _treeData.update();
+    _treeData.refreshState();
 
     while( progressPtr->count() < expectedCount )
         ++(*progressPtr);
@@ -387,7 +387,7 @@ void ModelTreeRoot::fromMemory( char* start )
     {
         std::string binName = getBinaryName();
         size_t readBytes = 0;
-        _treeData.fromFileOutOfCore( binName, addr - start, &readBytes );
+        _treeData.fromFile( binName, addr - start, &readBytes );
         TRIPLYASSERT( readBytes > 0 );
         addr += readBytes;
     }

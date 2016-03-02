@@ -283,21 +283,21 @@ void ModelTreeLeaf::setupRendering( RenderState& state,
         // Upload data to VBOs
         if( state.useColors() )
         {
-            EQ_GL_CALL( glBindBuffer( GL_ARRAY_BUFFER, glBuffers[COLOR_BUFFER_TYPE] ));
-            EQ_GL_CALL( glBufferSubData( GL_ARRAY_BUFFER, 0, _vertexLength * sizeof( Color ),
+            TRIPLY_GL_CALL( glBindBuffer( GL_ARRAY_BUFFER, glBuffers[COLOR_BUFFER_TYPE] ));
+            TRIPLY_GL_CALL( glBufferSubData( GL_ARRAY_BUFFER, 0, _vertexLength * sizeof( Color ),
                                          _dataBuffers[COLOR_BUFFER_TYPE] ));
         }
 
-        EQ_GL_CALL( glBindBuffer( GL_ARRAY_BUFFER, glBuffers[NORMAL_BUFFER_TYPE] ));
-        EQ_GL_CALL( glBufferSubData( GL_ARRAY_BUFFER, 0, _vertexLength * sizeof( Normal ),
+        TRIPLY_GL_CALL( glBindBuffer( GL_ARRAY_BUFFER, glBuffers[NORMAL_BUFFER_TYPE] ));
+        TRIPLY_GL_CALL( glBufferSubData( GL_ARRAY_BUFFER, 0, _vertexLength * sizeof( Normal ),
                                      _dataBuffers[NORMAL_BUFFER_TYPE] ));
 
-        EQ_GL_CALL( glBindBuffer( GL_ARRAY_BUFFER, glBuffers[VERTEX_BUFFER_TYPE] ));
-        EQ_GL_CALL( glBufferSubData( GL_ARRAY_BUFFER, 0, _vertexLength * sizeof( Vertex ),
+        TRIPLY_GL_CALL( glBindBuffer( GL_ARRAY_BUFFER, glBuffers[VERTEX_BUFFER_TYPE] ));
+        TRIPLY_GL_CALL( glBufferSubData( GL_ARRAY_BUFFER, 0, _vertexLength * sizeof( Vertex ),
                                      _dataBuffers[VERTEX_BUFFER_TYPE] ));
 
-        EQ_GL_CALL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, glBuffers[INDEX_BUFFER_TYPE] ));
-        EQ_GL_CALL( glBufferSubData( GL_ELEMENT_ARRAY_BUFFER, 0, _indexLength * sizeof( ShortIndex ),
+        TRIPLY_GL_CALL( glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, glBuffers[INDEX_BUFFER_TYPE] ));
+        TRIPLY_GL_CALL( glBufferSubData( GL_ELEMENT_ARRAY_BUFFER, 0, _indexLength * sizeof( ShortIndex ),
                                      _dataBuffers[INDEX_BUFFER_TYPE] ));
 
         if( state.getRenderMode() == RENDER_MODE_VA_OBJECT )
